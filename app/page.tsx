@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Download, AlertCircle, FileText, ChevronDown, ChevronUp, Palette, ExternalLink, Instagram, Heart } from 'lucide-react'
+import { Download, AlertCircle, FileText, ChevronDown, ChevronUp, Palette, ExternalLink, Instagram, Heart, X } from 'lucide-react'
 import FontSelector from '@/components/FontSelector'
 import Preview from '@/components/Preview'
 import CompressionDialog from '@/components/CompressionDialog'
@@ -184,6 +184,10 @@ export default function Home() {
 
     // Mostra sezione supporto (senza feedback temporaneo)
     setShowSupport(true)
+  }
+
+  const closeSupportModal = () => {
+    setShowSupport(false)
   }
 
   return (
@@ -443,51 +447,68 @@ export default function Home() {
               </div>
             )}
 
-            {/* Sezione Supporto Post-Download */}
+            {/* Popup Supporto Post-Download */}
             {showSupport && (
-              <div className="mt-6 p-4 bg-gray-800 rounded-lg border border-gray-700 animate-fade-in">
-                <div className="text-center space-y-4">
-                  <div>
-                    <p className="text-green-400 font-medium mb-2">
-                      {t('downloadSuccess')}
-                    </p>
-                    <p className="text-gray-300 text-sm mb-3">
-                      {t('fileReadyText')}
-                    </p>
-                    <a
-                      href={`https://www.gran-turismo.com/${lang}/gt7/user/`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm underline"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      {t('gt7LinkText')}
-                    </a>
-                  </div>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+                {/* Backdrop */}
+                <div 
+                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                  onClick={closeSupportModal}
+                />
+                
+                {/* Modal Content */}
+                <div className="relative bg-gray-800 rounded-lg border border-gray-700 shadow-xl max-w-md w-full p-6">
+                  {/* Close Button */}
+                  <button
+                    onClick={closeSupportModal}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                   
-                  <div className="border-t border-gray-700 pt-4">
-                    <p className="text-gray-300 text-sm mb-3">
-                      {t('supportMessage')}
-                    </p>
-                    <div className="flex justify-center gap-3">
+                  <div className="text-center space-y-4">
+                    <div>
+                      <p className="text-green-400 font-medium mb-2">
+                        {t('downloadSuccess')}
+                      </p>
+                      <p className="text-gray-300 text-sm mb-3">
+                        {t('fileReadyText')}
+                      </p>
                       <a
-                        href="https://www.instagram.com/parenji_gt7/"
+                        href={`https://www.gran-turismo.com/${lang}/gt7/user/`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all text-sm"
+                        className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm underline"
                       >
-                        <Instagram className="w-4 h-4" />
-                        {t('supportInstagram')}
+                        <ExternalLink className="w-4 h-4" />
+                        {t('gt7LinkText')}
                       </a>
-                      <a
-                        href="https://www.paypal.me/lorenzoparenti"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-sm"
-                      >
-                        <Heart className="w-4 h-4" />
-                        {t('supportDonate')}
-                      </a>
+                    </div>
+                    
+                    <div className="border-t border-gray-700 pt-4">
+                      <p className="text-gray-300 text-sm mb-3">
+                        {t('supportMessage')}
+                      </p>
+                      <div className="flex justify-center gap-3">
+                        <a
+                          href="https://www.instagram.com/parenji_gt7/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all text-sm"
+                        >
+                          <Instagram className="w-4 h-4" />
+                          {t('supportInstagram')}
+                        </a>
+                        <a
+                          href="https://www.paypal.me/lorenzoparenti"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-sm"
+                        >
+                          <Heart className="w-4 h-4" />
+                          {t('supportDonate')}
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
