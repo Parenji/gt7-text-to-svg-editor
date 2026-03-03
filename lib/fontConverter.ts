@@ -226,12 +226,15 @@ export function formatFileSize(bytes: number): string {
  * Scarica il SVG come file
  */
 export function downloadSVG(svgContent: string, filename: string = 'export.svg'): void {
-  const blob = new Blob([svgContent], { type: 'application/octet-stream' })
+  const blob = new Blob([svgContent], { type: 'image/svg+xml' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
-  link.setAttribute('download', filename) // Forza il download
+  // Aggiunge target="_blank" per mobile per evitare che si apra nella stessa pagina
+  if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+    link.target = '_blank'
+  }
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
