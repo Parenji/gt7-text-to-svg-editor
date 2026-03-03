@@ -1,14 +1,15 @@
-import { optimize, type Config, type PluginConfig } from 'svgo'
+import { optimize, type Config } from 'svgo'
 
 /**
  * Definiamo i plugin separatamente per evitare errori di inferenza
  */
-const plugins: PluginConfig[] = [
+const plugins: any[] = [
   {
     name: 'preset-default',
     params: {
       overrides: {
-        removeViewBox: false,
+        // SVGO v4: in overrides devono esserci solo plugin del preset-default.
+        // Manteniamo qui solo ciò che ci serve davvero.
         convertPathData: {
           floatPrecision: 2,
           transformPrecision: 2,
@@ -18,43 +19,14 @@ const plugins: PluginConfig[] = [
         },
         convertTransform: {
           floatPrecision: 2,
-          collapseIntoTransforms: true,
         },
-        cleanupIds: true,
-        removeDataUriImages: true,
-        removeDesc: true,
-        removeTitle: true,
-        removeEditorsNSData: true,
-        removeMetadata: true,
-        removeUnknownsDefaults: true,
-        removeUselessDefs: true,
-        removeXMLNS: false,
-        mergePaths: true,
-        removeDimensions: true,
-        cleanupAttrs: true,
-        removeDoctype: true,
-        removeXMLProcInst: true,
-        removeComments: true,
-        removeUselessStrokeAndFill: true,
-        removeHiddenElems: true,
-        removeEmptyText: true,
-        removeEmptyAttrs: true,
-        removeEmptyContainers: true,
-        removeUnusedNS: true,
-        cleanupIDs: true,
-        removeRasterImages: true,
-        mergeStyles: true,
-        inlineStyles: true,
-        minifyStyles: true,
-        convertStyleToAttrs: true,
-        convertColors: true,
-        removeNonInheritableGroupAttrs: true,
-        transformsWithOnePath: true,
-        sortAttrs: true,
-        removeTitleAndDesc: true,
       },
     },
-  } as any,
+  },
+  {
+    name: 'removeViewBox',
+    active: false,
+  },
   // Plugin aggiuntivi per rimuovere data-name e altri attributi non necessari
   {
     name: 'removeAttrs',

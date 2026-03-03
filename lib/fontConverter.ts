@@ -173,6 +173,23 @@ export function textToSVGPath(
   maxX = Math.max(maxX, maxWidth) // Usa la larghezza massima calcolata
   maxY = Math.max(maxY, y + fontSize * 0.1) // y è l'ultima baseline, aggiungi spazio per caratteri bassi
 
+  // Se applichiamo skewX sul path, il bounding box deve includere anche la trasformazione,
+  // altrimenti il contenuto può venire tagliato ai bordi.
+  if (skew !== 0) {
+    const rad = (skew * Math.PI) / 180
+    const t = Math.tan(rad)
+
+    const candidates = [
+      minX + t * minY,
+      minX + t * maxY,
+      maxX + t * minY,
+      maxX + t * maxY,
+    ]
+
+    minX = Math.min(...candidates)
+    maxX = Math.max(...candidates)
+  }
+
   // Aggiungi padding controllato per ottimizzare lo spazio
   const padding = fontSize * 0.15 // Ridotto da 0.3 a 0.15 (15% invece di 30%)
   const width = maxX - minX + padding * 2
