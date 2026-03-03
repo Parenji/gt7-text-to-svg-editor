@@ -4,7 +4,7 @@ export const translations = {
     appSubtitle: 'Crea loghi SVG ottimizzati per Gran Turismo 7',
 
     textLabel: 'Testo',
-    textPlaceholder: 'Inserisci il tuo testo (max 20 caratteri)',
+    textPlaceholder: 'Inserisci il tuo testo (max 30 caratteri)',
     maxChars: 'Massimo {max} caratteri',
 
     preloadedFontsLabel: 'Font Pre-caricati',
@@ -77,7 +77,7 @@ export const translations = {
     appSubtitle: 'Create SVG logos optimized for Gran Turismo 7',
 
     textLabel: 'Text',
-    textPlaceholder: 'Type your text (max 20 characters)',
+    textPlaceholder: 'Type your text (max 30 characters)',
     maxChars: 'Max {max} characters',
 
     preloadedFontsLabel: 'Preloaded Fonts',

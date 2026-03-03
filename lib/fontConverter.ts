@@ -75,28 +75,43 @@ export function textToSVGPath(
     return createEmptySVG(color, backgroundColor)
   }
 
-  // Calcola il path per ogni carattere
+  // Gestione testo con più righe
+  const lines = text.split('\n')
   const paths: Path[] = []
   let x = 0
-  const y = fontSize // Baseline
+  let y = fontSize // Baseline per la prima riga
   let firstCharLeftBearing = 0
+  let maxWidth = 0
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-    const glyph = font.charToGlyph(char)
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex]
+    x = 0 // Reset x per ogni nuova riga
     
-    // Per il primo carattere, considera il leftSideBearing (potrebbe essere negativo)
-    if (i === 0 && glyph.leftSideBearing !== undefined) {
-      const leftBearing = glyph.leftSideBearing * (fontSize / font.unitsPerEm)
-      firstCharLeftBearing = Math.min(0, leftBearing) // Solo se negativo
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      const glyph = font.charToGlyph(char)
+      
+      // Per il primo carattere della prima riga, considera il leftSideBearing
+      if (lineIndex === 0 && i === 0 && glyph.leftSideBearing !== undefined) {
+        const leftBearing = glyph.leftSideBearing * (fontSize / font.unitsPerEm)
+        firstCharLeftBearing = Math.min(0, leftBearing) // Solo se negativo
+      }
+      
+      const path = glyph.getPath(x, y, fontSize)
+      paths.push(path)
+      
+      // Avanza la posizione x per il prossimo carattere
+      const advanceWidth = glyph.advanceWidth ? glyph.advanceWidth * (fontSize / font.unitsPerEm) : fontSize * 0.6
+      x += advanceWidth + tracking
     }
     
-    const path = glyph.getPath(x, y, fontSize)
-    paths.push(path)
+    // Aggiorna la larghezza massima
+    maxWidth = Math.max(maxWidth, x)
     
-    // Avanza la posizione x per il prossimo carattere
-    const advanceWidth = glyph.advanceWidth ? glyph.advanceWidth * (fontSize / font.unitsPerEm) : fontSize * 0.6
-    x += advanceWidth + tracking
+    // Vai alla riga successiva (se non è l'ultima)
+    if (lineIndex < lines.length - 1) {
+      y += fontSize * 1.2 // Spazio tra le righe (120% della dimensione del font)
+    }
   }
 
   // Combina tutti i path - usa toPathData() invece di toSVG() per ottenere solo i dati del path
@@ -126,16 +141,16 @@ export function textToSVGPath(
   if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
     minX = 0
     minY = 0
-    maxX = x
-    maxY = fontSize
+    maxX = maxWidth
+    maxY = y + fontSize * 0.1
   }
 
   // Assicurati che il bounding box includa almeno l'origine e il leftSideBearing del primo carattere
   // e la fine del testo
   minX = Math.min(minX, 0, firstCharLeftBearing)
   minY = Math.min(minY, 0)
-  maxX = Math.max(maxX, x)
-  maxY = Math.max(maxY, fontSize * 1.1) // Ridotto da 1.2 a 1.1 per meno spazio sopra
+  maxX = Math.max(maxX, maxWidth) // Usa la larghezza massima calcolata
+  maxY = Math.max(maxY, y + fontSize * 0.1) // y è l'ultima baseline, aggiungi spazio per caratteri bassi
 
   // Aggiungi padding controllato per ottimizzare lo spazio
   const padding = fontSize * 0.15 // Ridotto da 0.3 a 0.15 (15% invece di 30%)

@@ -36,7 +36,7 @@ export default function Home() {
   const [downloadFeedback, setDownloadFeedback] = useState(false)
   const [showSupport, setShowSupport] = useState(false)
 
-  const MAX_LENGTH = 20
+  const MAX_LENGTH = 30
 
   // Calcola il peso del SVG in tempo reale
   const svgSize = useMemo(() => {
@@ -206,8 +206,7 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {t('textLabel')} ({text.length}/{MAX_LENGTH})
               </label>
-              <input
-                type="text"
+              <textarea
                 value={text}
                 onChange={(e) => {
                   const newText = e.target.value.slice(0, MAX_LENGTH)
@@ -215,7 +214,8 @@ export default function Home() {
                 }}
                 maxLength={MAX_LENGTH}
                 placeholder={t('textPlaceholder')}
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none text-white text-lg placeholder-gray-500"
+                rows={2}
+                className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none text-white text-lg placeholder-gray-500 resize-none"
               />
               <div className="mt-1 flex justify-between text-xs text-gray-400">
                 <span>{t('maxChars', { max: MAX_LENGTH })}</span>
