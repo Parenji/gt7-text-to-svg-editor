@@ -197,8 +197,13 @@ export function textToSVGPath(
   const viewBoxX = minX - padding
   const viewBoxY = minY - padding
 
-  // Genera SVG
-  const transform = skew !== 0 ? ` transform="skewX(${skew})"` : ''
+  // Applica skew direttamente alle coordinate del path (flattening per GT7)
+  if (skew !== 0) {
+    combinedPath = applySkewToPathData(combinedPath, skew)
+  }
+
+  // Normalizza path data per GT7: comandi assoluti + rounding
+  combinedPath = normalizePathDataForGt7(combinedPath, 2)
   
   let pathAttributes = ''
   if (outlineMode) {
@@ -211,13 +216,9 @@ export function textToSVGPath(
     pathAttributes = `fill="${color}"`
   }
 
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" 
-     width="${width}" 
-     height="${height}" 
-     viewBox="${viewBoxX} ${viewBoxY} ${width} ${height}">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="${viewBoxX} ${viewBoxY} ${width} ${height}">
   ${backgroundColor !== 'transparent' ? `<rect x="${viewBoxX}" y="${viewBoxY}" width="${width}" height="${height}" fill="${backgroundColor}"/>` : ''}
-  <path d="${combinedPath.trim()}"${transform} ${pathAttributes}/>
+  <path d="${combinedPath.trim()}" ${pathAttributes}/>
 </svg>`
 
   return svg
@@ -230,11 +231,7 @@ function createEmptySVG(color: string, backgroundColor: string): string {
   const width = 200
   const height = 100
   
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" 
-     width="${width}" 
-     height="${height}" 
-     viewBox="0 0 ${width} ${height}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 ${width} ${height}">
   ${backgroundColor !== 'transparent' ? `<rect width="${width}" height="${height}" fill="${backgroundColor}"/>` : ''}
 </svg>`
 }
@@ -297,4 +294,325 @@ export function downloadSVG(svgContent: string, filename: string = 'export.svg')
   if (!supportsDownloadAttribute) {
     window.open(url, '_blank', 'noopener,noreferrer')
   }
+}
+
+/**
+ * Normalizza path data per GT7: converte comandi relativi in assoluti e arrotonda decimali
+ */
+export function normalizePathDataForGt7(d: string, decimals: number): string {
+  const tokens = tokenizePathData(d)
+  let i = 0
+  let cx = 0
+  let cy = 0
+  let sx = 0
+  let sy = 0
+
+  let prevCmd = ''
+  let prevCubicX2 = 0
+  let prevCubicY2 = 0
+  let prevQuadX1 = 0
+  let prevQuadY1 = 0
+
+  const out: string[] = []
+  const pushNum = (n: number) => {
+    const p = Math.pow(10, decimals)
+    const v = Math.round(n * p) / p
+    out.push(Number.isFinite(v) ? String(v) : '0')
+  }
+
+  const nextNum = () => {
+    const t = tokens[i++]
+    return typeof t === 'number' ? t : 0
+  }
+
+  while (i < tokens.length) {
+    const t = tokens[i++]
+    if (typeof t !== 'string') continue
+    const cmd = t
+    const lower = cmd.toLowerCase()
+    const isRel = cmd === lower
+
+    if (lower === 'm') {
+      const x = nextNum()
+      const y = nextNum()
+      cx = isRel ? cx + x : x
+      cy = isRel ? cy + y : y
+      sx = cx
+      sy = cy
+      out.push('M')
+      pushNum(cx)
+      pushNum(cy)
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const lx = nextNum()
+        const ly = nextNum()
+        cx = isRel ? cx + lx : lx
+        cy = isRel ? cy + ly : ly
+        out.push('L')
+        pushNum(cx)
+        pushNum(cy)
+      }
+      continue
+    }
+
+    if (lower === 'z') {
+      out.push('Z')
+      cx = sx
+      cy = sy
+      prevCmd = 'Z'
+      continue
+    }
+
+    if (lower === 'l') {
+      out.push('L')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x = nextNum()
+        const y = nextNum()
+        cx = isRel ? cx + x : x
+        cy = isRel ? cy + y : y
+        pushNum(cx)
+        pushNum(cy)
+      }
+      prevCmd = 'L'
+      continue
+    }
+
+    if (lower === 'h') {
+      out.push('L')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x = nextNum()
+        cx = isRel ? cx + x : x
+        pushNum(cx)
+        pushNum(cy)
+      }
+      prevCmd = 'L'
+      continue
+    }
+
+    if (lower === 'v') {
+      out.push('L')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const y = nextNum()
+        cy = isRel ? cy + y : y
+        pushNum(cx)
+        pushNum(cy)
+      }
+      prevCmd = 'L'
+      continue
+    }
+
+    if (lower === 'c') {
+      out.push('C')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x1 = nextNum()
+        const y1 = nextNum()
+        const x2 = nextNum()
+        const y2 = nextNum()
+        const x = nextNum()
+        const y = nextNum()
+
+        const ax1 = isRel ? cx + x1 : x1
+        const ay1 = isRel ? cy + y1 : y1
+        const ax2 = isRel ? cx + x2 : x2
+        const ay2 = isRel ? cy + y2 : y2
+        cx = isRel ? cx + x : x
+        cy = isRel ? cy + y : y
+
+        pushNum(ax1)
+        pushNum(ay1)
+        pushNum(ax2)
+        pushNum(ay2)
+        pushNum(cx)
+        pushNum(cy)
+
+        prevCubicX2 = ax2
+        prevCubicY2 = ay2
+        prevCmd = 'C'
+      }
+      continue
+    }
+
+    if (lower === 's') {
+      out.push('C')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x2 = nextNum()
+        const y2 = nextNum()
+        const x = nextNum()
+        const y = nextNum()
+
+        const reflectedX1 = prevCmd === 'C' ? 2 * cx - prevCubicX2 : cx
+        const reflectedY1 = prevCmd === 'C' ? 2 * cy - prevCubicY2 : cy
+
+        const ax2 = isRel ? cx + x2 : x2
+        const ay2 = isRel ? cy + y2 : y2
+        cx = isRel ? cx + x : x
+        cy = isRel ? cy + y : y
+
+        pushNum(reflectedX1)
+        pushNum(reflectedY1)
+        pushNum(ax2)
+        pushNum(ay2)
+        pushNum(cx)
+        pushNum(cy)
+
+        prevCubicX2 = ax2
+        prevCubicY2 = ay2
+        prevCmd = 'C'
+      }
+      continue
+    }
+
+    if (lower === 'q') {
+      out.push('Q')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x1 = nextNum()
+        const y1 = nextNum()
+        const x = nextNum()
+        const y = nextNum()
+
+        const ax1 = isRel ? cx + x1 : x1
+        const ay1 = isRel ? cy + y1 : y1
+        cx = isRel ? cx + x : x
+        cy = isRel ? cy + y : y
+
+        pushNum(ax1)
+        pushNum(ay1)
+        pushNum(cx)
+        pushNum(cy)
+
+        prevQuadX1 = ax1
+        prevQuadY1 = ay1
+        prevCmd = 'Q'
+      }
+      continue
+    }
+
+    if (lower === 't') {
+      out.push('Q')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x = nextNum()
+        const y = nextNum()
+
+        const reflectedX1 = prevCmd === 'Q' ? 2 * cx - prevQuadX1 : cx
+        const reflectedY1 = prevCmd === 'Q' ? 2 * cy - prevQuadY1 : cy
+
+        cx = isRel ? cx + x : x
+        cy = isRel ? cy + y : y
+
+        pushNum(reflectedX1)
+        pushNum(reflectedY1)
+        pushNum(cx)
+        pushNum(cy)
+
+        prevQuadX1 = reflectedX1
+        prevQuadY1 = reflectedY1
+        prevCmd = 'Q'
+      }
+      continue
+    }
+
+    if (lower === 'a') {
+      out.push('A')
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const rx = nextNum()
+        const ry = nextNum()
+        const rot = nextNum()
+        const laf = nextNum()
+        const sf = nextNum()
+        const x = nextNum()
+        const y = nextNum()
+        const ax = isRel ? cx + x : x
+        const ay = isRel ? cy + y : y
+        pushNum(rx)
+        pushNum(ry)
+        pushNum(rot)
+        out.push(String(laf ? 1 : 0))
+        out.push(String(sf ? 1 : 0))
+        pushNum(ax)
+        pushNum(ay)
+        cx = ax
+        cy = ay
+        prevCmd = 'A'
+      }
+      continue
+    }
+
+    out.push(cmd.toUpperCase())
+    while (i < tokens.length && typeof tokens[i] === 'number') {
+      pushNum(nextNum())
+    }
+    prevCmd = cmd.toUpperCase()
+  }
+
+  return out.join(' ')
+}
+
+function tokenizePathData(d: string): Array<string | number> {
+  const tokens: Array<string | number> = []
+  const re = /([a-zA-Z])|([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(d)) !== null) {
+    if (m[1]) tokens.push(m[1])
+    else if (m[2]) tokens.push(Number(m[2]))
+  }
+  return tokens
+}
+
+/**
+ * Applica skewX alle coordinate del path (flattening per GT7)
+ */
+function applySkewToPathData(d: string, skewDeg: number): string {
+  const skewRad = (skewDeg * Math.PI) / 180
+  const tan = Math.tan(skewRad)
+  
+  const tokens = tokenizePathData(d)
+  let i = 0
+  const out: string[] = []
+  
+  const nextNum = () => {
+    const t = tokens[i++]
+    return typeof t === 'number' ? t : 0
+  }
+  
+  while (i < tokens.length) {
+    const t = tokens[i++]
+    if (typeof t !== 'string') continue
+    const cmd = t
+    const lower = cmd.toLowerCase()
+    
+    out.push(cmd)
+    
+    // Per ogni coppia di coordinate (x, y), applica skewX: x' = x + y * tan(skew)
+    // Nota: alcuni comandi come A (arc) hanno parametri diversi, quindi gestiamo caso per caso
+    if (lower === 'a') {
+      // Arc: rx ry x-axis-rotation large-arc-flag sweep-flag x y
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const rx = nextNum()
+        const ry = nextNum()
+        const rot = nextNum()
+        const laf = nextNum()
+        const sf = nextNum()
+        const x = nextNum()
+        const y = nextNum()
+        const skewedX = x + y * tan
+        out.push(String(rx.toFixed(2)))
+        out.push(String(ry.toFixed(2)))
+        out.push(String(rot.toFixed(2)))
+        out.push(String(laf ? 1 : 0))
+        out.push(String(sf ? 1 : 0))
+        out.push(String(skewedX.toFixed(2)))
+        out.push(String(y.toFixed(2)))
+      }
+    } else {
+      // Per comandi standard (M, L, C, Q, S, T): coppie (x, y)
+      while (i < tokens.length && typeof tokens[i] === 'number') {
+        const x = nextNum()
+        const y = nextNum()
+        const skewedX = x + y * tan
+        out.push(String(skewedX.toFixed(2)))
+        out.push(String(y.toFixed(2)))
+      }
+    }
+  }
+  
+  return out.join(' ')
 }

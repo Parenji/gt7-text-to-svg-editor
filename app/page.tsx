@@ -21,6 +21,7 @@ export default function Home() {
   const [strokeWidth, setStrokeWidth] = useState(2)
   const [fillColor, setFillColor] = useState('#ff0000')
   const [useTransparentFill, setUseTransparentFill] = useState(true)
+  const [enableCompression, setEnableCompression] = useState(true)
   const [showAdvancedControls, setShowAdvancedControls] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
   const [exportSuccess, setExportSuccess] = useState(false)
@@ -85,11 +86,22 @@ export default function Home() {
         fillColor,
         useTransparentFill,
       })
+      // Se la compressione è disabilitata, restituisci il SVG originale
+      if (!enableCompression) {
+        const size = getSVGSize(svgContent)
+        return {
+          optimized: svgContent,
+          originalSize: size,
+          optimizedSize: size,
+          reduction: 0,
+          reductionPercent: 0,
+        }
+      }
       return optimizeSVGWithInfo(svgContent)
     } catch {
       return null
     }
-  }, [text, font, skew, tracking, textAlign, outlineMode, mainColor, strokeWidth, fillColor, useTransparentFill])
+  }, [text, font, skew, tracking, textAlign, outlineMode, mainColor, strokeWidth, fillColor, useTransparentFill, enableCompression])
 
   const handleExport = () => {
     if (!text || text.trim().length === 0) {
@@ -127,6 +139,15 @@ export default function Home() {
 
       // Simula un piccolo delay per mostrare il feedback "Optimizing..."
       setTimeout(() => {
+        // Se la compressione è disabilitata, scarica direttamente
+        if (!enableCompression) {
+          downloadSVG(svgContent, filename)
+          setExportSuccess(true)
+          setTimeout(() => setExportSuccess(false), 3000)
+          setIsOptimizing(false)
+          return
+        }
+
         // Se il file supera i 15KB, mostra il dialogo di ottimizzazione
         if (sizeKB > 15) {
           const optimization = optimizeSVGWithInfo(svgContent)
@@ -447,6 +468,25 @@ export default function Home() {
                         {t('alignRight')}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Compressione SVGO */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-300">
+                      {t('enableCompression')}
+                    </label>
+                    <button
+                      onClick={() => setEnableCompression(!enableCompression)}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        enableCompression ? 'bg-red-600' : 'bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          enableCompression ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
               )}

@@ -32,6 +32,7 @@ export const translations = {
     alignLeft: 'Sinistra',
     alignCenter: 'Centro',
     alignRight: 'Destra',
+    enableCompression: 'Compressione SVGO',
 
     svgSize: 'Dimensione SVG:',
     exportSvg: 'Download SVG',
@@ -110,6 +111,7 @@ export const translations = {
     alignLeft: 'Left',
     alignCenter: 'Center',
     alignRight: 'Right',
+    enableCompression: 'SVGO Compression',
 
     svgSize: 'SVG size:',
     exportSvg: 'Download SVG',

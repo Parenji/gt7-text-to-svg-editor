@@ -1,4 +1,5 @@
 import { optimize, type Config } from 'svgo'
+import { normalizePathDataForGt7 } from './fontConverter'
 
 /**
  * Definiamo i plugin separatamente per evitare errori di inferenza
@@ -13,13 +14,25 @@ const plugins: any[] = [
         convertPathData: {
           floatPrecision: 2,
           transformPrecision: 2,
+          // Disabilita la conversione a comandi relativi per GT7
+          makeArcs: {
+            threshold: 2,
+            tolerance: 0.5,
+          },
+          // Assicura che i comandi rimangano assoluti
+          convertToL: true,
+          convertToQ: true,
+          convertToC: true,
         },
         cleanupNumericValues: {
           floatPrecision: 2,
         },
-        convertTransform: {
-          floatPrecision: 2,
-        },
+        // Disabilita completamente convertTransform per GT7
+        convertTransform: false,
+        // Disabilita collapsePaths che potrebbe unire path in modo problematico
+        collapsePaths: false,
+        // Disabilita mergePaths che potrebbe creare problemi
+        mergePaths: false,
       },
     },
   },
@@ -46,11 +59,28 @@ export function optimizeSVG(svgContent: string): string {
     const result = optimize(svgContent, svgoConfig)
     
     // Check per SVGO v3+
-    if ('data' in result) {
-      return result.data
+    let optimized = 'data' in result ? result.data : svgContent
+    
+    // Post-processing GT7: assicura che version="1.1" sia presente
+    if (!optimized.includes('version="1.1"')) {
+      optimized = optimized.replace('<svg', '<svg version="1.1"')
     }
     
-    return svgContent 
+    // Rimuovi XML header se presente
+    optimized = optimized.replace(/^<\?xml[^>]*\?>\s*/, '')
+    
+    // Post-processing GT7: normalizza di nuovo i path per garantire comandi assoluti
+    // SVGO potrebbe reintrodirurre comandi relativi
+    const pathMatch = optimized.match(/<path[^>]*d="([^"]*)"/)
+    if (pathMatch && pathMatch[1]) {
+      const normalizedPath = normalizePathDataForGt7(pathMatch[1], 2)
+      optimized = optimized.replace(/d="[^"]*"/, `d="${normalizedPath}"`)
+    }
+    
+    // Rimuovi eventuali transform attributes che SVGO potrebbe aver reintrodotti
+    optimized = optimized.replace(/\s*transform="[^"]*"/g, '')
+    
+    return optimized
   } catch (error) {
     console.error('Errore ottimizzazione:', error)
     return svgContent 
